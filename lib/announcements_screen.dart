@@ -136,7 +136,7 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
                 return const Center(child: CircularProgressIndicator());
               }
               if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                return const Center(child: Text('Nta tangazo rirabungikwa.'));
+                return const Center(child: Text('Nta tangazo rirarungikwa.'));
               }
 
               final announcements = snapshot.data!.docs;

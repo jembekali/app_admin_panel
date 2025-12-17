@@ -22,9 +22,9 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } on FirebaseAuthException catch (e) {
       // Niba hari ikibazo kibaye, tuzakibona hano
-      print("Ibyabaye byatunguye: ${e.message}");
+      print("Ivyabaye vyatunguye: ${e.message}");
        ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Imeri canke ijambobanga si vyo! Subiramwo neza.'))
+        SnackBar(content: Text('Email canke ijambobanga si vyo! Subiramwo neza.'))
       );
     }
   }
@@ -51,7 +51,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 40),
 
-              // Aho gushyira imeri
+              // Aho gushira email
               TextField(
                 controller: _emailController,
                 decoration: const InputDecoration(
@@ -61,7 +61,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Aho gushyira ijambobanga
+              // Aho gushira ijambobanga
               TextField(
                 controller: _passwordController,
                 obscureText: true, // Guhisha ijambobanga

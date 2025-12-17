@@ -18,7 +18,7 @@ class ChatsScreen extends StatelessWidget {
 
         // Niba habaye ikibazo
         if (snapshot.hasError) {
-          return const Center(child: Text('Habaye ikibazo mu gukurura ibiganiro'));
+          return const Center(child: Text('Habaye ikibazo mu gukwega ibiganiro'));
         }
 
         // Niba ata kiganiro na kimwe kiri muri database
@@ -45,7 +45,7 @@ class ChatsScreen extends StatelessWidget {
               trailing: const Icon(Icons.arrow_forward_ios),
               onTap: () {
                 // Turaza gukora igikorwa co kwinjira mu kiganiro niwakanda hano
-                print('Ukanze ku kiganiro gifise ID: $chatRoomId');
+                print('Ufyonze ku kiganiro gifise ID: $chatRoomId');
               },
             );
           },

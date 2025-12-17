@@ -1,5 +1,4 @@
-// Code ya: ADMIN PANEL
-// Dosiye: lib/feedback_screen.dart
+// lib/feedback_screen.dart (VERSION IKOSOYE - TABS & DELETE)
 
 import 'package:app_admin_panel/reply_to_feedback_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -13,171 +12,279 @@ class FeedbackScreen extends StatefulWidget {
   State<FeedbackScreen> createState() => _FeedbackScreenState();
 }
 
-class _FeedbackScreenState extends State<FeedbackScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Ubutumwa bw'Imfashanyo n'Ivyiyumviro"),
-        automaticallyImplyLeading: false,
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: "BITARAKEMUKA"),
-            Tab(text: "VYAKEMUWE"),
-          ],
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: const [
-          FeedbackList(isResolved: false),
-          FeedbackList(isResolved: true),
+class _FeedbackScreenState extends State<FeedbackScreen> {
+  
+  // Function yo gusiba ikintu kimwe
+  Future<void> _deleteFeedback(String docId) async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Gufuta?'),
+        content: const Text('Vyukuri urashaka gufuta iki kibazo burundu?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Oya')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true), 
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Ego Futa')
+          ),
         ],
       ),
     );
+
+    if (confirm == true) {
+      await FirebaseFirestore.instance.collection('feedback').doc(docId).delete();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vyafuswe.')));
+      }
+    }
   }
-}
 
-class FeedbackList extends StatefulWidget {
-  final bool isResolved;
-  const FeedbackList({super.key, required this.isResolved});
+  // Function yo gufuta VYOSE ivyakemuwe
+  Future<void> _deleteAllResolved() async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Gufuta Vyose?'),
+        content: const Text(
+          'Ugiye gufuta ibibazo VYOSE byakemuwe.\n\nNtushobora kubigarura. Uremeza?',
+          style: TextStyle(color: Colors.red),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Oya')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true), 
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: const Text('Futa Vyose')
+          ),
+        ],
+      ),
+    );
 
-  @override
-  State<FeedbackList> createState() => _FeedbackListState();
-}
+    if (confirm == true) {
+      // 1. Shaka ibyakemuwe byose
+      final snapshot = await FirebaseFirestore.instance
+          .collection('feedback')
+          .where('isResolved', isEqualTo: true)
+          .get();
 
-class _FeedbackListState extends State<FeedbackList> with AutomaticKeepAliveClientMixin<FeedbackList> {
-  
-  @override
-  bool get wantKeepAlive => true; 
+      if (snapshot.docs.isEmpty) {
+        if(mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nta kintu cogufuta gihari.')));
+        return;
+      }
 
-  Future<void> _toggleResolvedStatus(String docId, bool currentStatus) async {
-    await FirebaseFirestore.instance.collection('feedback').doc(docId).update({
-      'isResolved': !currentStatus,
-    });
+      // 2. Siba kimwe kimwe muri Batch (Firestore yemera 500 icyarimwe)
+      final batch = FirebaseFirestore.instance.batch();
+      for (var doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+
+      await batch.commit();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${snapshot.docs.length} Vyafuswe burundu.'), backgroundColor: Colors.green),
+        );
+      }
+    }
+  }
+
+  String _formatDate(Timestamp? timestamp) {
+    if (timestamp == null) return '';
+    return DateFormat('dd/MM/yyyy HH:mm').format(timestamp.toDate());
   }
 
   @override
   Widget build(BuildContext context) {
-    super.build(context); 
-    
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text("Imfashanyo & Ibibazo"),
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: "Ibitarakemuka (Pending)", icon: Icon(Icons.pending_actions)),
+              Tab(text: "Ivyakemuwe (Resolved)", icon: Icon(Icons.check_circle_outline)),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            // TAB 1: IBITARAKEMUKA
+            _buildFeedbackList(isResolved: false),
+            
+            // TAB 2: IVYAKEMUWE (Irimo Delete All)
+            _buildResolvedList(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFeedbackList({required bool isResolved}) {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection('feedback').where('isResolved', isEqualTo: widget.isResolved).orderBy('createdAt', descending: true).snapshots(),
+      stream: FirebaseFirestore.instance
+          .collection('feedback')
+          .where('isResolved', isEqualTo: isResolved)
+          .orderBy('createdAt', descending: true)
+          .snapshots(),
       builder: (context, snapshot) {
+        if (snapshot.hasError) return Center(child: Text("Ikosa: ${snapshot.error}"));
         if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-        if (snapshot.hasError) return Center(child: Text('IKOSA RYABAYE: ${snapshot.error}', style: const TextStyle(color: Colors.red)));
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) return Center(child: Text('Nta butumwa buhari muri iki gice.'));
+
+        final docs = snapshot.data!.docs;
+
+        if (docs.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(isResolved ? Icons.check_circle : Icons.inbox, size: 60, color: Colors.grey),
+                const SizedBox(height: 10),
+                Text(
+                  isResolved ? "Nta bibazo vyakemuwe bihari." : "Nta bibazo bishasha bihari.",
+                  style: const TextStyle(color: Colors.grey),
+                ),
+              ],
+            ),
+          );
+        }
 
         return ListView.builder(
-          padding: const EdgeInsets.all(8.0), // Twagabanyije padding kugira amakarita yegere urubibe
-          itemCount: snapshot.data!.docs.length,
+          itemCount: docs.length,
+          padding: const EdgeInsets.all(10),
           itemBuilder: (context, index) {
-            final doc = snapshot.data!.docs[index];
+            final doc = docs[index];
             final data = doc.data() as Map<String, dynamic>;
-            
-            final userEmail = data['userEmail'] ?? 'Umukoresha ntazwi';
-            final message = data['message'] ?? 'Ubutumwa ntibuboneka';
-            final category = data['category'] ?? 'Category ntizwi';
+            final message = data['message'] ?? '';
+            final email = data['userEmail'] ?? data['email'] ?? 'Nta Email';
             final timestamp = data['createdAt'] as Timestamp?;
-            final date = timestamp != null ? DateFormat('d MMM y, HH:mm').format(timestamp.toDate()) : 'Isaha ntiboneka';
 
-            // =================================================================
-            // >>>>>>>> HANO NI HO TWONGEYE GUKOSORA UBURYO BIGARAGARA <<<<<<<<
-            // =================================================================
             return Card(
-              margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
+              margin: const EdgeInsets.only(bottom: 10),
+              child: ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: isResolved ? Colors.green[100] : Colors.orange[100],
+                  child: Icon(
+                    isResolved ? Icons.check : Icons.priority_high, 
+                    color: isResolved ? Colors.green : Colors.orange
+                  ),
+                ),
+                title: Text(
+                  email, 
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Umurongo wa mbere: Category, Izina, n'Isaha
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Chip(
-                          label: Text(category, style: const TextStyle(fontWeight: FontWeight.bold)),
-                          backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-                        ),
-                        Text(date, style: Theme.of(context).textTheme.bodySmall),
-                      ],
-                    ),
+                    Text(message, maxLines: 2, overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 4),
-                    Text('Ubutumwa bwa: $userEmail', style: const TextStyle(fontWeight: FontWeight.w500)),
-                    const Divider(height: 20),
-                    
-                    // Umurongo wa kabiri: Akadirisha k'ubutumwa n'utubuto
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // >>> AKADIRISHA GASHASHA K'UBUTUMWA <<<
-                        Expanded(
-                          child: ConstrainedBox(
-                            // Tuvuga ko akadirisha katarenga uburebure bwa 200
-                            constraints: const BoxConstraints(maxHeight: 200),
-                            // Iyo ubutumwa ari burebure, turashobora kugenda hasi no hejuru
-                            child: SingleChildScrollView(
-                              child: Container(
-                                padding: const EdgeInsets.all(12.0),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8.0),
-                                ),
-                                child: Text(message),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-
-                        // >>> UTUBUTO TWARASUBIJWEHO UTUMENYETSO <<<
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            TextButton.icon(
-                              icon: const Icon(Icons.reply, size: 18),
-                              label: const Text('Ishura'),
-                              style: TextButton.styleFrom(foregroundColor: Colors.blue),
-                              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => ReplyToFeedbackScreen(feedbackDoc: doc))),
-                            ),
-                            const SizedBox(height: 8),
-                             TextButton.icon(
-                              icon: Icon(
-                                widget.isResolved ? Icons.undo : Icons.check_circle_outline,
-                                size: 18,
-                              ),
-                              label: Text(widget.isResolved ? 'Subiza' : 'Cakemuwe'),
-                              style: TextButton.styleFrom(
-                                foregroundColor: widget.isResolved ? Colors.orange : Colors.green,
-                              ),
-                              onPressed: () => _toggleResolvedStatus(doc.id, widget.isResolved),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                    Text(_formatDate(timestamp), style: TextStyle(fontSize: 11, color: Colors.grey[600])),
                   ],
                 ),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ReplyToFeedbackScreen(feedbackDoc: doc),
+                    ),
+                  );
+                },
               ),
             );
           },
         );
       },
+    );
+  }
+
+  // LIST YIHARIYE KURI RESOLVED (Kugira ngo dushyiremo Delete buttons)
+  Widget _buildResolvedList() {
+    return Column(
+      children: [
+        // Header ifite Delete All Button
+        Container(
+          padding: const EdgeInsets.all(12),
+          color: Colors.grey[100],
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text("Urutonde gw'ivyakemuwe", style: TextStyle(fontWeight: FontWeight.bold)),
+              TextButton.icon(
+                onPressed: _deleteAllResolved,
+                icon: const Icon(Icons.delete_sweep),
+                label: const Text("Futa Vyose"),
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+              ),
+            ],
+          ),
+        ),
+        
+        // List nyirizina
+        Expanded(
+          child: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('feedback')
+                .where('isResolved', isEqualTo: true)
+                .orderBy('createdAt', descending: true)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.hasError) return Center(child: Text("Ikosa: ${snapshot.error}"));
+              if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+
+              final docs = snapshot.data!.docs;
+
+              if (docs.isEmpty) {
+                return const Center(child: Text("Nta kintu gihari."));
+              }
+
+              return ListView.builder(
+                itemCount: docs.length,
+                padding: const EdgeInsets.all(10),
+                itemBuilder: (context, index) {
+                  final doc = docs[index];
+                  final data = doc.data() as Map<String, dynamic>;
+                  final message = data['message'] ?? '';
+                  final email = data['userEmail'] ?? 'Nta Email';
+
+                  return Card(
+                    child: ListTile(
+                      leading: const CircleAvatar(
+                        backgroundColor: Colors.green,
+                        child: Icon(Icons.check, color: Colors.white),
+                      ),
+                      title: Text(email, maxLines: 1),
+                      subtitle: Text(message, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Buto yo gufuta umwe umwe
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, color: Colors.red),
+                            tooltip: 'Futa iki gusa',
+                            onPressed: () => _deleteFeedback(doc.id),
+                          ),
+                          const Icon(Icons.arrow_forward_ios, size: 14, color: Color.fromARGB(255, 141, 88, 88)),
+                        ],
+                      ),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ReplyToFeedbackScreen(feedbackDoc: doc),
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

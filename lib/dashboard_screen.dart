@@ -1,11 +1,9 @@
-// Code ya: ADMIN PANEL
-// Dosiye: lib/dashboard_screen.dart
+// lib/dashboard_screen.dart (VERSION YAKIRIYE IBIREGO)
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 class DashboardScreen extends StatelessWidget {
-  // TWONGEYEMWO IYI VARIABULU KUGIRA TWAKIRE YA FUNCTION
   final Function(int) onNavigate;
 
   const DashboardScreen({super.key, required this.onNavigate});
@@ -35,7 +33,7 @@ class DashboardScreen extends StatelessWidget {
                     color: Colors.blue,
                     count: count.toString(),
                     title: 'Abakoresha Bose',
-                    onTap: () => onNavigate(1), // Iyo bakanze hano, tuja ku rupapuro rw'abakoresha (index 1)
+                    onTap: () => onNavigate(1), // Ija ku bakoresha (index 1)
                   );
                 },
               ),
@@ -45,7 +43,7 @@ class DashboardScreen extends StatelessWidget {
                 color: Colors.green,
                 count: '0',
                 title: 'Abari ku Murongo',
-                onTap: () {}, // Nta c'irahakora ubu
+                onTap: () {},
               ),
               // Ubutumwa Butarakemuka
               StreamBuilder<QuerySnapshot>(
@@ -60,11 +58,26 @@ class DashboardScreen extends StatelessWidget {
                     color: Colors.orange,
                     count: count.toString(),
                     title: 'Ubutumwa Butarakemuka',
-                    // HANO NI HO HAHINDUTSE CYANE
-                    onTap: () {
-                      // Turabwira MainScreen ngo idushire ku rupapuro rw'imfashanyo (index 5)
-                      onNavigate(5);
-                    },
+                    onTap: () => onNavigate(6), // Ija ku mfashanyo (index 6, ntiyari 5)
+                  );
+                },
+              ),
+
+              // =========================================================
+              // =====> IYI NI YO KARATA NSHASHA Y'IBIREGO <=====
+              // =========================================================
+              StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance.collection('post_reports').where('status', isEqualTo: 'pending').snapshots(),
+                builder: (context, snapshot) {
+                  final count = snapshot.data?.docs.length ?? 0;
+                  return StatCard(
+                    icon: Icons.report_problem,
+                    // Ibara rirahinduka iyo hari ikirego gishasha
+                    color: count > 0 ? Colors.redAccent : Colors.teal,
+                    count: count.toString(),
+                    title: 'Ibirego Bishasha',
+                    // Iyo bayikanze, ija ku rupapuro rw'ibirego (index 7)
+                    onTap: () => onNavigate(7),
                   );
                 },
               ),
@@ -78,7 +91,7 @@ class DashboardScreen extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           const Center(
-            child: Text('Ahazaza hano ibikorwa vya vuba...'),
+            child: Text('Aha hazoza ibikorwa vya vuba...'),
           ),
         ],
       ),
@@ -86,13 +99,13 @@ class DashboardScreen extends StatelessWidget {
   }
 }
 
-// Widget yo kwubaka za karata
+// Widget yo kwubaka za karata (Iyi ntihinduka)
 class StatCard extends StatelessWidget {
   final IconData icon;
   final Color color;
   final String count;
   final String title;
-  final VoidCallback onTap; // Twongeyemwo iyi function
+  final VoidCallback onTap;
 
   const StatCard({
     super.key,
@@ -100,13 +113,13 @@ class StatCard extends StatelessWidget {
     required this.color,
     required this.count,
     required this.title,
-    required this.onTap, // Na hano nyene
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: onTap, // Turakoresha iyo function hano
+      onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Card(
         elevation: 2,

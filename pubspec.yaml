@@ -12,18 +12,26 @@ dependencies:
 
   firebase_core: ^2.32.0 
   firebase_auth: ^4.20.0
-  cloud_firestore: ^4.17.5 
-  intl: ^0.18.1
+  cloud_firestore: ^4.17.5
+  
+  # ===> NAKOSOYE URUGERO RWA INTL <===
+  intl: ^0.19.0
+
   fl_chart: ^0.68.0
   youtube_player_flutter: ^8.1.2 
   http: ^1.1.0
 
-  # =============================================================
-  # >>>>> IYI NI YO PACKAGE NSHYA TWONGEREYEMO <<<<<
-  # =============================================================
   url_launcher: ^6.1.14
 
+  # =============================================================
+  # >>>>> IYI NI YO PACKAGE NSHYA TWONGEREYEMWO <<<<<
+  # =============================================================
+  cached_network_image: ^3.3.1
+
+
   cupertino_icons: ^1.0.8
+  uuid: ^4.5.2
+  firebase_database: ^10.5.7
 
 dev_dependencies:
   flutter_test:

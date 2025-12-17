@@ -1,15 +1,16 @@
-// Code ya: ADMIN PANEL
-// Dosiye: lib/main_screen.dart (YAHINDURIWEHO)
+// lib/main_screen.dart (VERSION YUZUYE - NA BROADCAST)
 
-// 1. TWONGEREYEMO IYI 'IMPORT' NSHYA
-import 'package:app_admin_panel/manage_tv_screen.dart'; 
-
+import 'package:app_admin_panel/manage_tv_screen.dart';
 import 'package:app_admin_panel/analytics_screen.dart';
 import 'package:app_admin_panel/announcements_screen.dart';
 import 'package:app_admin_panel/chats_screen.dart';
 import 'package:app_admin_panel/dashboard_screen.dart';
 import 'package:app_admin_panel/feedback_screen.dart';
+import 'package:app_admin_panel/reported_posts_screen.dart';
 import 'package:app_admin_panel/users_screen.dart';
+// ===> IMPORT NSHYA <===
+import 'package:app_admin_panel/send_broadcast_screen.dart';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -33,12 +34,12 @@ class _MainScreenState extends State<MainScreen> {
       const UsersScreen(),                          // Index 1
       const ChatsScreen(),                          // Index 2
       const AnalyticsScreen(),                      // Index 3
-      
-      // 2. TWONGEREYEMO URUPAPURO RWA TV HANO
       const ManageTvScreen(),                       // Index 4
-      
-      const AnnouncementsScreen(),                  // Index 5 (yahoze ari 4)
-      const FeedbackScreen(),                       // Index 6 (yahoze ari 5)
+      const AnnouncementsScreen(),                  // Index 5
+      const FeedbackScreen(),                       // Index 6
+      const ReportedPostsScreen(),                  // Index 7
+      // ===> URUPAPURO RWA BROADCAST <===
+      const SendBroadcastScreen(),                  // Index 8
     ];
   }
 
@@ -53,16 +54,16 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     final List<String> pageTitles = [
-      'Urwego Rw\'isonga',
-      'Gucunga Abakoresha',
-      'Gucunga Ibiganiro',
+      'Urwego Gw\'intango',
+      'Kugenzura Abakoresha',
+      'Kugenzura Ibiganiro',
       'Igenzura Rusangi',
-
-      // 3. TWONGEREYEMO IZINA RY'URUPAPURO RWA TV
-      'Gucunga za Television',
-
+      'Kugenzura Television',
       'Kurungika Amatangazo',
-      'Imfashanyo n\'Ivyiyumviro'
+      'Imfashanyo n\'Ivyiyumviro',
+      'Kugenzura Ibirego',
+      // ===> TITRE NSHASHA <===
+      'Kwandikira Bose'
     ];
 
     return Scaffold(
@@ -90,40 +91,48 @@ class _MainScreenState extends State<MainScreen> {
               NavigationRailDestination(
                 icon: Icon(Icons.dashboard_outlined),
                 selectedIcon: Icon(Icons.dashboard),
-                label: Text('Isonga'),
+                label: Text('ITANGURIRO'),
               ),
               NavigationRailDestination(
                 icon: Icon(Icons.people_outline),
                 selectedIcon: Icon(Icons.people),
-                label: Text('Abakoresha'),
+                label: Text('ABAKORESHA'),
               ),
               NavigationRailDestination(
                 icon: Icon(Icons.chat_bubble_outline),
                 selectedIcon: Icon(Icons.chat_bubble),
-                label: Text('Ibiganiro'),
+                label: Text('IBIGANIRO'),
               ),
               NavigationRailDestination(
                 icon: Icon(Icons.analytics_outlined),
                 selectedIcon: Icon(Icons.analytics),
-                label: Text('Igenzura'),
+                label: Text('IGENZURA'),
               ),
-
-              // 4. TWONGEREYEMO BUTO YA TV HANO
               NavigationRailDestination(
                 icon: Icon(Icons.tv_outlined),
                 selectedIcon: Icon(Icons.tv),
-                label: Text('Television'),
+                label: Text('TELEVISION'),
               ),
-
               NavigationRailDestination(
                 icon: Icon(Icons.campaign_outlined),
                 selectedIcon: Icon(Icons.campaign),
-                label: Text('Amatangazo'),
+                label: Text('AMATANGAZO'),
               ),
               NavigationRailDestination(
                 icon: Icon(Icons.feedback_outlined),
                 selectedIcon: Icon(Icons.feedback),
-                label: Text('Imfashanyo'),
+                label: Text('IMFASHANYO'),
+              ),
+              NavigationRailDestination(
+                icon: Icon(Icons.report_problem_outlined),
+                selectedIcon: Icon(Icons.report_problem),
+                label: Text('IBIREGO'),
+              ),
+              // ===> BUTO NSHYA YO KWANDIKIRA BOSE <===
+              NavigationRailDestination(
+                icon: Icon(Icons.mark_chat_unread_outlined),
+                selectedIcon: Icon(Icons.mark_chat_unread),
+                label: Text('BROADCAST'),
               ),
             ],
           ),

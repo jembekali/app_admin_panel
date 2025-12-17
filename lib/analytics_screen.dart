@@ -15,7 +15,7 @@ class AnalyticsScreen extends StatelessWidget {
           return const Center(child: CircularProgressIndicator());
         }
         if (snapshot.hasError) {
-          return const Center(child: Text('Habaye ikibazo mu gukurura amakuru'));
+          return const Center(child: Text('Habaye ikibazo mu gukwega amakuru'));
         }
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return const Center(child: Text('Nta makuru y\'abakoresha araboneka'));
