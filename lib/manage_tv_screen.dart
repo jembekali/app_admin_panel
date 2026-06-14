@@ -1,4 +1,4 @@
-// lib/manage_tv_screen.dart (VERSION YUZUYE: ORDER NUMBER VISIBLE)
+// lib/manage_tv_screen.dart (VERSION YUZUYE + REALTIME VIEWERS + CORRECT HINT)
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -7,12 +7,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
-// Class ifasha gucunga urutonde rwa YouTube
+// Class ifasha gucunga urutonde rwa YouTube (Playlist Mode)
 class PlaylistItem {
-  TextEditingController linkController;
-  TextEditingController hoursController;
-  TextEditingController minutesController;
-  TextEditingController secondsController;
+  final TextEditingController linkController;
+  final TextEditingController hoursController;
+  final TextEditingController minutesController;
+  final TextEditingController secondsController;
 
   PlaylistItem()
       : linkController = TextEditingController(),
@@ -30,7 +30,6 @@ class PlaylistItem {
 
 class ManageTvScreen extends StatefulWidget {
   const ManageTvScreen({super.key});
-
   @override
   State<ManageTvScreen> createState() => _ManageTvScreenState();
 }
@@ -39,8 +38,7 @@ class _ManageTvScreenState extends State<ManageTvScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   late final FirebaseDatabase _realtimeDb;
   bool _dbReady = false; 
-
-  List<PlaylistItem> _playlistItems = [];
+  final List<PlaylistItem> _playlistItems = [];
 
   @override
   void initState() {
@@ -48,650 +46,319 @@ class _ManageTvScreenState extends State<ManageTvScreen> {
     _initializeRealtimeDb();
   }
 
-  // Method yo gutegura Realtime Database
   Future<void> _initializeRealtimeDb() async {
     try {
       _realtimeDb = FirebaseDatabase.instanceFor(
         app: Firebase.app(),
-        // ⚠️⚠️⚠️ HINDURA HANO: Shyira Link yawe nyayo ya Realtime Database ⚠️⚠️⚠️
-        databaseURL: 'https://jembe-talk-default-rtdb.firebaseio.com/', 
+        databaseURL: 'https://jembe-talk-1-default-rtdb.firebaseio.com/', 
       );
-      setState(() => _dbReady = true);
+      if (mounted) setState(() => _dbReady = true);
     } catch (e) {
-      debugPrint("Ikosa rya Database Init: $e");
-      // Fallback
       _realtimeDb = FirebaseDatabase.instance;
-      setState(() => _dbReady = true);
+      if (mounted) setState(() => _dbReady = true);
     }
   }
 
   @override
   void dispose() {
-    for (var item in _playlistItems) {
-      item.dispose();
-    }
+    for (var item in _playlistItems) { item.dispose(); }
     super.dispose();
   }
 
   // ===========================================================================
-  // 1. TICKER MANAGER (DIALOG YO GUHINDURA ITANGAZO)
+  // 1. HELPERS: LOGIC YO GUFATA VIDEO ID
+  // ===========================================================================
+  String _extractVideoId(String url) {
+    url = url.trim();
+    if (url.isEmpty) return "";
+    String? id = YoutubePlayer.convertUrlToId(url);
+    if (id != null && id.length == 11) return id;
+
+    if (url.contains('/live/')) {
+      final parts = url.split('/live/');
+      if (parts.length > 1) return parts[1].split('?').first.split('&').first;
+    }
+    if (url.contains('/shorts/')) {
+      final parts = url.split('/shorts/');
+      if (parts.length > 1) return parts[1].split('?').first.split('&').first;
+    }
+    return url; 
+  }
+
+  // ===========================================================================
+  // 2. TICKER MANAGER (DIALOG YO GUHINDURA ITANGAZO)
   // ===========================================================================
   Future<void> _showTickerDialog() async {
-    if (!_dbReady) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Database nturaboneka, rindiraho gato...")),
-      );
-      _initializeRealtimeDb();
-      return;
-    }
-
-    final TextEditingController msgController = TextEditingController();
+    if (!_dbReady) return;
+    final msgController = TextEditingController();
     bool isActive = true;
-    bool isLoadingData = true;
-    bool isSaving = false;
+    bool isLoading = true;
 
     showDialog(
       context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            
-            if (isLoadingData) {
-              _realtimeDb.ref('tv_ticker').get().then((snapshot) {
-                if (snapshot.exists) {
-                  final data = snapshot.value as Map;
-                  msgController.text = data['message'] ?? '';
-                  setDialogState(() {
-                    isActive = data['isActive'] ?? true;
-                    isLoadingData = false;
-                  });
-                } else {
-                  setDialogState(() => isLoadingData = false);
-                }
-              }).catchError((e) {
-                debugPrint("Ikosa ryo gusoma: $e");
-                setDialogState(() => isLoadingData = false);
-              });
-              isLoadingData = false; 
-            }
-
-            return AlertDialog(
-              title: const Text("Hindura Itangazo (Ticker)"),
-              content: isLoadingData 
-                  ? const SizedBox(height: 100, child: Center(child: CircularProgressIndicator()))
-                  : Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text(
-                          "Iri tangazo rica riboneka ku ma TV yose ubwo nyene.",
-                          style: TextStyle(fontSize: 12, color: Colors.grey),
-                        ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: msgController,
-                          decoration: const InputDecoration(
-                            labelText: "Ubutumwa",
-                            hintText: "Akarorero: Ikaze kuri Jembe TV...",
-                            border: OutlineInputBorder(),
-                          ),
-                          maxLines: 3,
-                        ),
-                        const SizedBox(height: 16),
-                        SwitchListTile(
-                          title: const Text("Erekana iri tangazo?"),
-                          subtitle: Text(isActive ? "Ego (Riboneke)" : "Oya (Ntiriboneke)"),
-                          value: isActive,
-                          activeColor: Colors.green,
-                          onChanged: (val) {
-                            setDialogState(() {
-                              isActive = val;
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text("Reka"),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-                  onPressed: isSaving ? null : () async {
-                    setDialogState(() => isSaving = true);
-
-                    try {
-                      await _realtimeDb.ref('tv_ticker').set({
-                        'message': msgController.text,
-                        'isActive': isActive,
-                      });
-                      
-                      if (mounted) {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Itangazo ryahindutse neza!"), backgroundColor: Colors.green),
-                        );
-                      }
-                    } catch (e) {
-                      setDialogState(() => isSaving = false);
-                      debugPrint("Ikosa ryo kubika: $e");
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text("Vyanse kubika: $e"), backgroundColor: Colors.red),
-                        );
-                      }
-                    }
-                  },
-                  child: isSaving 
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text("Bika & Tangaza", style: TextStyle(color: Colors.white)),
-                ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          if (isLoading) {
+            _realtimeDb.ref('tv_ticker').get().then((snap) {
+              if (snap.exists) {
+                final data = snap.value as Map;
+                msgController.text = data['message'] ?? '';
+                if (mounted) setDialogState(() { isActive = data['isActive'] ?? true; isLoading = false; });
+              } else {
+                if (mounted) setDialogState(() => isLoading = false);
+              }
+            });
+            isLoading = false;
+          }
+          return AlertDialog(
+            title: const Text("Itangazo rya Ticker"),
+            content: isLoading ? const Center(child: CircularProgressIndicator()) : Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: msgController, decoration: const InputDecoration(labelText: "Ubutumwa", border: OutlineInputBorder())),
+                SwitchListTile(title: const Text("Erekana"), value: isActive, onChanged: (v) => setDialogState(() => isActive = v)),
               ],
-            );
-          },
-        );
-      },
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text("REKA")),
+              ElevatedButton(onPressed: () async {
+                await _realtimeDb.ref('tv_ticker').set({'message': msgController.text, 'isActive': isActive});
+                if (context.mounted) Navigator.pop(context);
+              }, child: const Text("BIKA")),
+            ],
+          );
+        },
+      ),
     );
   }
 
   // ===========================================================================
-  // 2. CHANNEL MANAGER (DIALOG YO KONGERA/GUHINDURA TV)
+  // 3. CHANNEL MANAGER (DIALOG YO KONGERA/GUHINDURA TV)
   // ===========================================================================
   void _showChannelDialog({DocumentSnapshot? channel}) {
-    for (var item in _playlistItems) {
-      item.dispose();
-    }
+    for (var item in _playlistItems) { item.dispose(); }
     _playlistItems.clear();
 
     final nameController = TextEditingController(text: channel?['name'] ?? '');
     final urlController = TextEditingController(text: channel?['streamUrl'] ?? '');
-    // Hano orderController izajya yerekana order isanzwe, cyangwa ubusa
-    final orderController = TextEditingController(text: channel?['order']?.toString() ?? '');
+    final orderController = TextEditingController(text: channel?['order']?.toString() ?? '0');
     String selectedType = channel?['type'] ?? 'tv';
     final formKey = GlobalKey<FormState>();
 
-    if (channel != null && channel['type'] == 'youtube_playlist') {
-      final playlistData = List<Map<String, dynamic>>.from(channel['playlist'] ?? []);
-      for (var itemData in playlistData) {
-        final playlistItem = PlaylistItem();
-        playlistItem.linkController.text = itemData['videoId'] ?? '';
-
-        final totalSeconds = itemData['duration'] ?? 0;
-        final hours = totalSeconds ~/ 3600;
-        final minutes = (totalSeconds % 3600) ~/ 60;
-        final seconds = totalSeconds % 60;
-
-        playlistItem.hoursController.text = hours.toString().padLeft(2, '0');
-        playlistItem.minutesController.text = minutes.toString().padLeft(2, '0');
-        playlistItem.secondsController.text = seconds.toString().padLeft(2, '0');
-
-        _playlistItems.add(playlistItem);
+    if (channel != null) {
+      if (channel['type'] == 'youtube_playlist') {
+        final playlistData = List<Map<String, dynamic>>.from(channel['playlist'] ?? []);
+        for (var itemData in playlistData) {
+          final item = PlaylistItem();
+          item.linkController.text = itemData['videoId'] ?? '';
+          final dur = itemData['duration'] ?? 0;
+          item.hoursController.text = (dur ~/ 3600).toString().padLeft(2, '0');
+          item.minutesController.text = ((dur % 3600) ~/ 60).toString().padLeft(2, '0');
+          item.secondsController.text = (dur % 60).toString().padLeft(2, '0');
+          _playlistItems.add(item);
+        }
+      } else if (channel['type'] == 'youtube') {
+        final item = PlaylistItem();
+        item.linkController.text = channel['videoId'] ?? '';
+        _playlistItems.add(item);
       }
-    } else if (channel != null && channel['type'] == 'youtube') {
-      final playlistItem = PlaylistItem();
-      playlistItem.linkController.text = channel['videoId'] ?? '';
-      _playlistItems.add(playlistItem);
     }
-
-    if (_playlistItems.isEmpty) {
-      _playlistItems.add(PlaylistItem());
-    }
+    if (_playlistItems.isEmpty) _playlistItems.add(PlaylistItem());
 
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: Text(channel == null ? 'Ongeramwo Ikintu Gishasha' : 'Hindura Amakuru'),
-              content: Form(
-                key: formKey,
-                child: SizedBox(
-                  width: double.maxFinite,
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        TextFormField(
-                          controller: nameController,
-                          decoration: const InputDecoration(labelText: 'Izina (nka RTNB, Indirimbo za Jembe Kali)'),
-                          validator: (value) => value!.isEmpty ? 'Andika izina' : null,
-                        ),
-                        const SizedBox(height: 16),
-                        DropdownButtonFormField<String>(
-                          value: selectedType,
-                          decoration: const InputDecoration(labelText: 'Ubwoko bw\'igikoresho'),
-                          items: const [
-                            DropdownMenuItem(value: 'tv', child: Text('Television Isanzwe')),
-                            DropdownMenuItem(value: 'youtube', child: Text('Video IMWE ya YouTube')),
-                            DropdownMenuItem(value: 'youtube_playlist', child: Text('Urutonde gwa YouTube (TV)')),
-                          ],
-                          onChanged: (value) {
-                            if (value != null) {
-                              setDialogState(() {
-                                selectedType = value;
-                              });
-                            }
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        if (selectedType == 'youtube_playlist')
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text("Urutonde gw'amasanamu:", style: TextStyle(fontWeight: FontWeight.bold)),
-                              const SizedBox(height: 8),
-                              ListView.builder(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                itemCount: _playlistItems.length,
-                                itemBuilder: (context, index) {
-                                  final item = _playlistItems[index];
-                                  return Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: TextFormField(
-                                                controller: item.linkController,
-                                                decoration: const InputDecoration(labelText: 'Link canke ID ya YouTube', border: OutlineInputBorder()),
-                                                validator: (v) => v!.isEmpty ? 'Vuzura' : null,
-                                              ),
-                                            ),
-                                            IconButton(
-                                              icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
-                                              onPressed: () {
-                                                setDialogState(() {
-                                                  if (_playlistItems.length > 1) {
-                                                    _playlistItems[index].dispose();
-                                                    _playlistItems.removeAt(index);
-                                                  }
-                                                });
-                                              },
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Row(
-                                          children: [
-                                            const Text("Umwanya: "),
-                                            Expanded(child: _buildTimeInput(item.hoursController, "HH")),
-                                            const Padding(padding: EdgeInsets.symmetric(horizontal: 4.0), child: Text(":")),
-                                            Expanded(child: _buildTimeInput(item.minutesController, "MM")),
-                                            const Padding(padding: EdgeInsets.symmetric(horizontal: 4.0), child: Text(":")),
-                                            Expanded(child: _buildTimeInput(item.secondsController, "SS")),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              ),
-                              const SizedBox(height: 8),
-                              ElevatedButton.icon(
-                                icon: const Icon(Icons.add),
-                                label: const Text("Ongeramwo iyindi video"),
-                                onPressed: () {
-                                  setDialogState(() {
-                                    _playlistItems.add(PlaylistItem());
-                                  });
-                                },
-                                style: ElevatedButton.styleFrom(backgroundColor: Colors.green.shade700),
-                              ),
-                            ],
-                          ),
-                        if (selectedType == 'tv')
-                          TextFormField(
-                            controller: urlController,
-                            decoration: const InputDecoration(labelText: 'Link yuzuye ya TV (Stream URL)'),
-                            validator: (value) => value!.isEmpty ? 'Shiramwo link ya TV' : null,
-                          ),
-                        if (selectedType == 'youtube')
-                          TextFormField(
-                            controller: _playlistItems.first.linkController,
-                            decoration: const InputDecoration(labelText: 'Paste Link ya YouTube hano canke ID'),
-                            validator: (value) => value!.isEmpty ? 'Shiramwo Video ID canke Link' : null,
-                          ),
-                        
-                        // Hano Umuyobozi ashyiramo nimero niba abishaka
-                        TextFormField(
-                          controller: orderController,
-                          decoration: const InputDecoration(labelText: 'Inomero ku rutonde (Order)'),
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                          validator: (value) => value!.isEmpty ? 'Andika inomero' : null,
-                        ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(channel == null ? 'Ongeramwo Ibishasha' : 'Hindura Amakuru'),
+          content: Form(
+            key: formKey,
+            child: SizedBox(
+              width: double.maxFinite,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(controller: nameController, decoration: const InputDecoration(labelText: 'Izina rya TV')),
+                    DropdownButtonFormField<String>(
+                      value: selectedType,
+                      items: const [
+                        DropdownMenuItem(value: 'tv', child: Text('Television Isanzwe (m3u8)')),
+                        DropdownMenuItem(value: 'youtube', child: Text('YouTube (Live/Video IMWE)')),
+                        DropdownMenuItem(value: 'youtube_playlist', child: Text('Playlist Mode (TV)')),
                       ],
+                      onChanged: (v) => setDialogState(() => selectedType = v!),
                     ),
-                  ),
+                    const SizedBox(height: 10),
+                    if (selectedType == 'tv')
+                      TextFormField(controller: urlController, decoration: const InputDecoration(labelText: 'Stream URL (m3u8)')),
+                    
+                    // --- AGACE KABIZOBA MO HINT TEXT NK'UKO IRI KURI PHOTO ---
+                    if (selectedType == 'youtube')
+                      TextFormField(
+                        controller: _playlistItems.first.linkController,
+                        decoration: const InputDecoration(
+                          labelText: 'YouTube Link (Standard/Live)',
+                          hintText: 'https://www.youtube.com/live/...', // IYI NIYO HINT TEXT
+                        ),
+                      ),
+                    
+                    if (selectedType == 'youtube_playlist')
+                      Column(children: [
+                        const Text("Urutonde rw'amavideo:", style: TextStyle(fontWeight: FontWeight.bold)),
+                        for (int i = 0; i < _playlistItems.length; i++)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            child: Column(children: [
+                              Row(children: [
+                                Expanded(child: TextFormField(controller: _playlistItems[i].linkController, decoration: const InputDecoration(labelText: 'Video Link/ID', border: OutlineInputBorder(), hintText: 'https://www.youtube.com/watch?v=...'))),
+                                IconButton(icon: const Icon(Icons.remove_circle, color: Colors.red), onPressed: () => setDialogState(() => _playlistItems.removeAt(i))),
+                              ]),
+                              const SizedBox(height: 5),
+                              Row(children: [
+                                const Text("Umwanya: "),
+                                Expanded(child: _buildTimeInput(_playlistItems[i].hoursController, "HH")),
+                                const Text(":"),
+                                Expanded(child: _buildTimeInput(_playlistItems[i].minutesController, "MM")),
+                                const Text(":"),
+                                Expanded(child: _buildTimeInput(_playlistItems[i].secondsController, "SS")),
+                              ])
+                            ]),
+                          ),
+                        TextButton.icon(onPressed: () => setDialogState(() => _playlistItems.add(PlaylistItem())), icon: const Icon(Icons.add), label: const Text("Ongeramwo iyindi video"))
+                      ]),
+                    const SizedBox(height: 10),
+                    TextFormField(controller: orderController, decoration: const InputDecoration(labelText: 'Inomero (Order)'), keyboardType: TextInputType.number),
+                  ],
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Reka'),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    if (formKey.currentState!.validate()) {
-                      final data = {
-                        'name': nameController.text,
-                        'order': int.tryParse(orderController.text) ?? 0,
-                        'type': selectedType,
-                        'streamUrl': '',
-                        'videoId': '',
-                        'playlist': [],
-                      };
-
-                      if (selectedType == 'tv') {
-                        data['streamUrl'] = urlController.text;
-                      } else if (selectedType == 'youtube') {
-                        data['videoId'] = YoutubePlayer.convertUrlToId(_playlistItems.first.linkController.text, trimWhitespaces: true) ?? _playlistItems.first.linkController.text;
-                      } else if (selectedType == 'youtube_playlist') {
-                        List<Map<String, dynamic>> playlistToSave = [];
-                        for (var item in _playlistItems) {
-                          final videoId = YoutubePlayer.convertUrlToId(item.linkController.text, trimWhitespaces: true) ?? item.linkController.text;
-                          final hours = int.tryParse(item.hoursController.text) ?? 0;
-                          final minutes = int.tryParse(item.minutesController.text) ?? 0;
-                          final seconds = int.tryParse(item.secondsController.text) ?? 0;
-                          final durationInSeconds = (hours * 3600) + (minutes * 60) + seconds;
-
-                          if (videoId.isNotEmpty && durationInSeconds > 0) {
-                            playlistToSave.add({
-                              'videoId': videoId,
-                              'duration': durationInSeconds,
-                            });
-                          }
-                        }
-                        data['playlist'] = playlistToSave;
-                      }
-
-                      final String actionName = nameController.text;
-                      final bool isCreating = channel == null;
-                      Navigator.pop(context);
-                      try {
-                        if (isCreating) {
-                          await _firestore.collection('tv_channels').add(data);
-                          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("'$actionName' vyongejwemwo neza!"), backgroundColor: Colors.green.shade700));
-                        } else {
-                          await channel.reference.update(data);
-                          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("'$actionName' vyahinduwe neza!"), backgroundColor: Colors.blue.shade700));
-                        }
-                      } catch (e) {
-                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Habaye ikibazo mu kubika amakuru: $e"), backgroundColor: Colors.red.shade900));
-                      }
-                    }
-                  },
-                  child: const Text('Bika'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildTimeInput(TextEditingController controller, String hint) {
-    return TextFormField(
-      controller: controller,
-      textAlign: TextAlign.center,
-      decoration: InputDecoration(
-        hintText: hint,
-        border: const OutlineInputBorder(),
-        contentPadding: const EdgeInsets.all(8),
-      ),
-      keyboardType: TextInputType.number,
-      inputFormatters: [
-        FilteringTextInputFormatter.digitsOnly,
-        LengthLimitingTextInputFormatter(2),
-      ],
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Eka!';
-        }
-        if (hint == 'MM' || hint == 'SS') {
-          final number = int.tryParse(value);
-          if (number == null || number > 59) {
-            return '>59?';
-          }
-        }
-        return null;
-      },
-    );
-  }
-
-  void _deleteChannel(DocumentSnapshot channel) {
-    final String deletedName = channel['name'];
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Urifuza gufuta?'),
-        content: Text("Ugiye gufuta '$deletedName' burundu."),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Oya')),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              try {
-                await channel.reference.delete();
-                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("'$deletedName' vyafuswe neza."), backgroundColor: Colors.red.shade700));
-              } catch (e) {
-                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Habaye ikibazo mu gufuta: $e"), backgroundColor: Colors.red.shade900));
-              }
-            },
-            child: const Text('Ego, Futa', style: TextStyle(color: Colors.red)),
+            ),
           ),
-        ],
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('REKA')),
+            ElevatedButton(onPressed: () async {
+              if (formKey.currentState!.validate()) {
+                final data = {
+                  'name': nameController.text,
+                  'order': int.tryParse(orderController.text) ?? 0,
+                  'type': selectedType,
+                  'streamUrl': urlController.text,
+                  'videoId': '',
+                  'playlist': [],
+                };
+                if (selectedType == 'youtube') {
+                  data['videoId'] = _extractVideoId(_playlistItems.first.linkController.text);
+                } else if (selectedType == 'youtube_playlist') {
+                  List<Map<String, dynamic>> playlistToSave = [];
+                  for (var item in _playlistItems) {
+                    final vId = _extractVideoId(item.linkController.text);
+                    final dur = (int.parse(item.hoursController.text) * 3600) + (int.parse(item.minutesController.text) * 60) + int.parse(item.secondsController.text);
+                    if (vId.isNotEmpty && dur > 0) playlistToSave.add({'videoId': vId, 'duration': dur});
+                  }
+                  data['playlist'] = playlistToSave;
+                }
+                if (channel == null) {
+                  await _firestore.collection('tv_channels').add(data);
+                } else {
+                  await channel.reference.update(data);
+                }
+                if (context.mounted) Navigator.pop(context);
+              }
+            }, child: const Text('BIKA')),
+          ],
+        ),
       ),
     );
   }
 
-  Future<void> _updateOrder(List<DocumentSnapshot> channels) async {
-    final WriteBatch batch = _firestore.batch();
-    for (int i = 0; i < channels.length; i++) {
-      final doc = channels[i];
-      batch.update(doc.reference, {'order': i + 1});
-    }
-    await batch.commit();
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Urutonde rwahinduwe neza!"),
-          backgroundColor: Colors.blue,
-        ),
-      );
-    }
+  Widget _buildTimeInput(TextEditingController ctrl, String hint) {
+    return TextFormField(
+      controller: ctrl,
+      textAlign: TextAlign.center,
+      keyboardType: TextInputType.number,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(2)],
+      decoration: InputDecoration(hintText: hint, border: const OutlineInputBorder(), contentPadding: EdgeInsets.zero),
+    );
   }
 
+  // ===========================================================================
+  // 4. MAIN BUILD (REALTIME ITEM LIST WITH VIEWERS)
+  // ===========================================================================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Kugenzura Television na Video'),
-        elevation: 1,
-      ),
+      appBar: AppBar(title: const Text('Admin TV Panel')),
       body: StreamBuilder<QuerySnapshot>(
         stream: _firestore.collection('tv_channels').orderBy('order').snapshots(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return const Center(child: Text("Habaye ikibazo mu kubona amakuru."));
-          }
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(
-              child: Text(
-                'Nta TV canke Video birongegwamwo.\nfyonda kuri + hepfo ngo utangure.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-              ),
-            );
-          }
-
-          List<DocumentSnapshot> channels = snapshot.data!.docs;
-
+          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          final channels = snapshot.data!.docs;
           return ReorderableListView.builder(
-            padding: const EdgeInsets.only(bottom: 120),
             itemCount: channels.length,
+            onReorder: (oldIdx, newIdx) {
+              if (oldIdx < newIdx) newIdx -= 1;
+              final item = channels.removeAt(oldIdx);
+              channels.insert(newIdx, item);
+              final batch = _firestore.batch();
+              for (int i = 0; i < channels.length; i++) { batch.update(channels[i].reference, {'order': i + 1}); }
+              batch.commit();
+            },
             itemBuilder: (context, index) {
-              final channel = channels[index];
-              final data = channel.data() as Map<String, dynamic>;
-              final type = data['type'] ?? 'tv';
-              final docId = channel.id;
-
-              String subtitle = '';
-              if (type == 'tv') {
-                subtitle = data['streamUrl'] ?? '';
-              } else if (type == 'youtube') {
-                subtitle = 'YouTube ID: ${data['videoId'] ?? ''}';
-              } else if (type == 'youtube_playlist') {
-                final count = (data['playlist'] as List?)?.length ?? 0;
-                subtitle = "Urutonde rw'amasanamu $count";
-              }
+              final doc = channels[index];
+              final data = doc.data() as Map<String, dynamic>;
+              final channelId = doc.id;
 
               return Card(
-                key: ValueKey(channel.id),
-                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                elevation: 3,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4.0),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    leading: ReorderableDragStartListener(
-                      index: index,
-                      child: const Icon(Icons.drag_handle, color: Colors.white70),
-                    ),
-                    title: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            data['name'] ?? 'Izina ntiriboneka',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                          ),
-                        ),
-                        
-                        if (_dbReady)
-                          StreamBuilder<DatabaseEvent>(
-                            stream: _realtimeDb.ref('tv_viewers/$docId').onValue,
-                            builder: (context, viewerSnapshot) {
-                              int viewerCount = 0;
-                              if (viewerSnapshot.hasData && viewerSnapshot.data!.snapshot.value != null) {
-                                final viewerData = viewerSnapshot.data!.snapshot.value;
-                                if (viewerData is Map) {
-                                  viewerCount = viewerData.length;
-                                }
-                              }
-                              
-                              final bool isLive = viewerCount > 0;
-                              
-                              return Container(
-                                margin: const EdgeInsets.only(left: 10),
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: isLive ? Colors.red.shade700 : Colors.grey.shade800,
-                                  borderRadius: BorderRadius.circular(20),
-                                  boxShadow: isLive 
-                                    ? [BoxShadow(color: Colors.redAccent.withOpacity(0.4), blurRadius: 8, spreadRadius: 1)] 
-                                    : [],
-                                  border: Border.all(
-                                    color: isLive ? Colors.redAccent : Colors.grey.shade700,
-                                    width: 1.5
-                                  )
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
-                                      Icons.visibility, 
-                                      size: 18, 
-                                      color: Colors.white
+                key: ValueKey(doc.id),
+                margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                child: ListTile(
+                  leading: const Icon(Icons.drag_handle),
+                  title: Text(data['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("${data['type']} | Order: ${data['order']}"),
+                      
+                      // --- KUBARA ABANTU (REALTIME) ---
+                      if (_dbReady)
+                        StreamBuilder(
+                          stream: _realtimeDb.ref('tv_viewers/$channelId').onValue,
+                          builder: (context, AsyncSnapshot<DatabaseEvent> viewerSnapshot) {
+                            int count = 0;
+                            if (viewerSnapshot.hasData && viewerSnapshot.data!.snapshot.value != null) {
+                              final viewersMap = viewerSnapshot.data!.snapshot.value as Map;
+                              count = viewersMap.length;
+                            }
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 4.0),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.remove_red_eye, size: 14, color: count > 0 ? Colors.green : Colors.grey),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    "$count Bariko barayiraba",
+                                    style: TextStyle(
+                                      color: count > 0 ? Colors.green : Colors.grey,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12
                                     ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      "$viewerCount", 
-                                      style: const TextStyle(
-                                        color: Colors.white, 
-                                        fontWeight: FontWeight.bold, 
-                                        fontSize: 15
-                                      )
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                      ],
-                    ),
-                    subtitle: Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        subtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: Colors.grey),
-                      ),
-                    ),
-                    
-                    // =========================================================
-                    // 3. ORDER NUMBER (YONGEWEMO HANO: Visible Number)
-                    // =========================================================
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Aho inomero yanditse neza
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          margin: const EdgeInsets.only(right: 12), // Umwanya mbere y'ama buto
-                          decoration: BoxDecoration(
-                            color: Colors.blueAccent.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.blueAccent.withOpacity(0.5))
-                          ),
-                          child: Text(
-                            "#${data['order'] ?? 0}", // Yerekana #1, #2, etc.
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold, 
-                              color: Colors.blueAccent,
-                              fontSize: 14
-                            ),
-                          ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
                         ),
-                        
-                        // Ama buto asanzwe
-                        IconButton(
-                          icon: const Icon(Icons.edit_outlined, size: 24, color: Colors.blueAccent),
-                          onPressed: () => _showChannelDialog(channel: channel),
-                          tooltip: 'Hindura',
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 24),
-                          onPressed: () => _deleteChannel(channel),
-                          tooltip: 'Futa',
-                        ),
-                      ],
-                    ),
+                    ],
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () => _showChannelDialog(channel: doc)),
+                      IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => doc.reference.delete()),
+                    ],
                   ),
                 ),
               );
-            },
-            onReorder: (int oldIndex, int newIndex) {
-              setState(() {
-                if (oldIndex < newIndex) {
-                  newIndex -= 1;
-                }
-                final DocumentSnapshot item = channels.removeAt(oldIndex);
-                channels.insert(newIndex, item);
-              });
-              _updateOrder(channels);
             },
           );
         },
@@ -699,21 +366,9 @@ class _ManageTvScreenState extends State<ManageTvScreen> {
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          FloatingActionButton.extended(
-            heroTag: 'ticker_btn',
-            onPressed: _showTickerDialog,
-            icon: const Icon(Icons.campaign),
-            label: const Text('Itangazo (Ticker)'),
-            backgroundColor: Colors.orange,
-          ),
-          const SizedBox(height: 12),
-          FloatingActionButton.extended(
-            heroTag: 'add_tv_btn',
-            onPressed: () => _showChannelDialog(),
-            icon: const Icon(Icons.add),
-            label: const Text('Ongeramwo'),
-            backgroundColor: Colors.blueAccent,
-          ),
+          FloatingActionButton.extended(heroTag: 'ticker', onPressed: _showTickerDialog, label: const Text("Ticker"), icon: const Icon(Icons.campaign), backgroundColor: Colors.orange),
+          const SizedBox(height: 10),
+          FloatingActionButton.extended(heroTag: 'add', onPressed: () => _showChannelDialog(), label: const Text("Ongeramwo"), icon: const Icon(Icons.add)),
         ],
       ),
     );

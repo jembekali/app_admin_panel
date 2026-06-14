@@ -21,6 +21,48 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
     super.dispose();
   }
 
+  // 1. Uburyo bwo gusiba itangazo
+  Future<void> _deleteAnnouncement(String docId) async {
+    try {
+      await FirebaseFirestore.instance.collection('announcements').doc(docId).delete();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Itangazo ryafuswe neza!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Habaye ikibazo mu gufuta: $e')),
+        );
+      }
+    }
+  }
+
+  // 2. Akadirishya ko kwemeza niba ushaka gusiba (Confirmation Dialog)
+  void _confirmDelete(String docId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Gufuta Itangazo'),
+        content: const Text('Vyukuri ushaka gufuta iri tangazo?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('REKA'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _deleteAnnouncement(docId);
+            },
+            child: const Text('EGO, FUTA', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _sendAnnouncement() async {
     final title = _titleController.text.trim();
     final message = _messageController.text.trim();
@@ -44,15 +86,12 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
       _titleController.clear();
       _messageController.clear();
       
-      // TWAHINDURIYE HANO
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Itangazo ryarungitswe neza!')),
         );
       }
-
     } catch (e) {
-      // NA HANO
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Habaye ikibazo: $e')),
@@ -153,10 +192,15 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
                       : 'Isaha ntiboneka';
 
                   return ListTile(
-                    leading: const Icon(Icons.campaign),
+                    leading: const Icon(Icons.campaign, color: Colors.blue),
                     title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text('$message\n- Yarungitswe ku wa: $date'),
+                    subtitle: Text('$message\n- $date'),
                     isThreeLine: true,
+                    // HANO TWASHYIZEMO AKA BUTO KO GUSIBA
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete_outline, color: Colors.red),
+                      onPressed: () => _confirmDelete(doc.id),
+                    ),
                   );
                 },
               );

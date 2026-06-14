@@ -1,18 +1,23 @@
-// lib/main_screen.dart (VERSION YUZUYE - NA BROADCAST)
-
-import 'package:app_admin_panel/manage_tv_screen.dart';
-import 'package:app_admin_panel/analytics_screen.dart';
-import 'package:app_admin_panel/announcements_screen.dart';
-import 'package:app_admin_panel/chats_screen.dart';
-import 'package:app_admin_panel/dashboard_screen.dart';
-import 'package:app_admin_panel/feedback_screen.dart';
-import 'package:app_admin_panel/reported_posts_screen.dart';
-import 'package:app_admin_panel/users_screen.dart';
-// ===> IMPORT NSHYA <===
-import 'package:app_admin_panel/send_broadcast_screen.dart';
-
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+// 1. IMPORT UTILS KUGIRA NGO TUbone PASSWORD CHECK
+import 'utils/admin_utils.dart';
+
+// 2. IMPORT SCREENS ZOSE
+import 'dashboard_screen.dart';       
+import 'recovery_requests_screen.dart'; 
+import 'users_screen.dart';           
+import 'chats_screen.dart';           
+import 'analytics_screen.dart';       
+import 'manage_tv_screen.dart';        
+import 'announcements_screen.dart';   
+import 'feedback_screen.dart';        
+import 'reported_posts_screen.dart';   
+import 'send_broadcast_screen.dart';   
+import 'manage_dame_screen.dart';      
+import 'manage_star_ads_screen.dart';   
+import 'system_control_screen.dart';    
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -23,121 +28,125 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
-  
+
   late final List<Widget> _pages;
 
   @override
   void initState() {
     super.initState();
-    _pages = <Widget>[
-      DashboardScreen(onNavigate: _navigateToPage), // Index 0
-      const UsersScreen(),                          // Index 1
-      const ChatsScreen(),                          // Index 2
-      const AnalyticsScreen(),                      // Index 3
-      const ManageTvScreen(),                       // Index 4
-      const AnnouncementsScreen(),                  // Index 5
-      const FeedbackScreen(),                       // Index 6
-      const ReportedPostsScreen(),                  // Index 7
-      // ===> URUPAPURO RWA BROADCAST <===
-      const SendBroadcastScreen(),                  // Index 8
+    _pages = [
+      DashboardScreen(onNavigate: _navigateToPage), // 0
+      const RecoveryRequestsScreen(),               // 1
+      const UsersScreen(),                          // 2
+      const ChatsScreen(),                          // 3
+      const AnalyticsScreen(),                      // 4
+      const ManageTvScreen(),                       // 5
+      const AnnouncementsScreen(),                  // 6
+      const FeedbackScreen(),                       // 7
+      const ReportedPostsScreen(),                  // 8
+      const SendBroadcastScreen(),                  // 9
+      const ManageDameScreen(),                     // 10
+      const ManageStarAdsScreen(),                  // 11
+      const SystemControlScreen(),                  // 12 (Master Control)
     ];
   }
 
-  void _navigateToPage(int index) {
-    if (index >= 0 && index < _pages.length) {
-      setState(() {
-        _selectedIndex = index;
-      });
+  // Iyi function ifasha Dashboard guhindura paje
+  void _navigateToPage(int index) async {
+    // Niba paje agiyeho ari Master Control (12), nabwo tubaze Password
+    if (index == 12) {
+      bool isAuthorized = await AdminUtils.checkMasterPassword(context);
+      if (isAuthorized) {
+        setState(() => _selectedIndex = index);
+      }
+    } else {
+      setState(() => _selectedIndex = index);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final List<String> pageTitles = [
-      'Urwego Gw\'intango',
-      'Kugenzura Abakoresha',
-      'Kugenzura Ibiganiro',
-      'Igenzura Rusangi',
-      'Kugenzura Television',
-      'Kurungika Amatangazo',
-      'Imfashanyo n\'Ivyiyumviro',
-      'Kugenzura Ibirego',
-      // ===> TITRE NSHASHA <===
-      'Kwandikira Bose'
-    ];
-
     return Scaffold(
+      backgroundColor: const Color(0xFF0F0F13), 
       appBar: AppBar(
-        title: Text(pageTitles[_selectedIndex]),
+        backgroundColor: const Color(0xFF1E1E26), 
+        elevation: 4,
+        title: const Text(
+          "Jembe Talk Admin", 
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18, letterSpacing: 1.2)
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () {
-              FirebaseAuth.instance.signOut();
-            },
-            tooltip: 'Sohoka',
+            icon: const Icon(Icons.logout, color: Colors.redAccent, size: 22),
+            onPressed: () => FirebaseAuth.instance.signOut(),
           ),
+          const SizedBox(width: 15),
         ],
       ),
       body: Row(
         children: [
-          NavigationRail(
-            selectedIndex: _selectedIndex,
-            onDestinationSelected: (int index) {
-              _navigateToPage(index);
-            },
-            labelType: NavigationRailLabelType.all,
-            destinations: const <NavigationRailDestination>[
-              NavigationRailDestination(
-                icon: Icon(Icons.dashboard_outlined),
-                selectedIcon: Icon(Icons.dashboard),
-                label: Text('ITANGURIRO'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.people_outline),
-                selectedIcon: Icon(Icons.people),
-                label: Text('ABAKORESHA'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.chat_bubble_outline),
-                selectedIcon: Icon(Icons.chat_bubble),
-                label: Text('IBIGANIRO'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.analytics_outlined),
-                selectedIcon: Icon(Icons.analytics),
-                label: Text('IGENZURA'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.tv_outlined),
-                selectedIcon: Icon(Icons.tv),
-                label: Text('TELEVISION'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.campaign_outlined),
-                selectedIcon: Icon(Icons.campaign),
-                label: Text('AMATANGAZO'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.feedback_outlined),
-                selectedIcon: Icon(Icons.feedback),
-                label: Text('IMFASHANYO'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.report_problem_outlined),
-                selectedIcon: Icon(Icons.report_problem),
-                label: Text('IBIREGO'),
-              ),
-              // ===> BUTO NSHYA YO KWANDIKIRA BOSE <===
-              NavigationRailDestination(
-                icon: Icon(Icons.mark_chat_unread_outlined),
-                selectedIcon: Icon(Icons.mark_chat_unread),
-                label: Text('BROADCAST'),
-              ),
-            ],
+          // SIDEBAR (NAVIGATION RAIL)
+          Container(
+            decoration: const BoxDecoration(
+              color: Color(0xFF1E1E26),
+              border: Border(right: BorderSide(color: Colors.black, width: 0.5))
+            ),
+            child: LayoutBuilder(
+              builder: (context, constraint) {
+                return SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: constraint.maxHeight),
+                    child: IntrinsicHeight(
+                      child: NavigationRail(
+                        backgroundColor: const Color(0xFF1E1E26),
+                        selectedIndex: _selectedIndex,
+                        // --- HANO NIHO TWASHYIZE LOGIC YA PASSWORD ---
+                        onDestinationSelected: (index) async {
+                          if (index == 12) {
+                            // Baza password mbere yo kwinjira kuri CONTROL
+                            bool isAuthorized = await AdminUtils.checkMasterPassword(context);
+                            if (isAuthorized) {
+                              setState(() => _selectedIndex = index);
+                            }
+                          } else {
+                            setState(() => _selectedIndex = index);
+                          }
+                        },
+                        labelType: NavigationRailLabelType.all,
+                        groupAlignment: -1.0, 
+                        selectedLabelTextStyle: const TextStyle(color: Colors.amber, fontSize: 10, fontWeight: FontWeight.bold),
+                        unselectedLabelTextStyle: const TextStyle(color: Colors.grey, fontSize: 10),
+                        selectedIconTheme: const IconThemeData(color: Colors.amber, size: 26),
+                        unselectedIconTheme: const IconThemeData(color: Colors.grey, size: 22),
+                        indicatorColor: Colors.amber.withOpacity(0.1),
+                        destinations: const [
+                          NavigationRailDestination(icon: Icon(Icons.grid_view_rounded), label: Text('DASHBOARD')), // 0
+                          NavigationRailDestination(icon: Icon(Icons.published_with_changes), label: Text('KUGARUZA')), // 1
+                          NavigationRailDestination(icon: Icon(Icons.group_outlined), label: Text('USERS')), // 2
+                          NavigationRailDestination(icon: Icon(Icons.chat_bubble_outline), label: Text('IBIGANIRO')), // 3
+                          NavigationRailDestination(icon: Icon(Icons.bar_chart_outlined), label: Text('MUMISI 7')), // 4
+                          NavigationRailDestination(icon: Icon(Icons.tv_outlined), label: Text('TV')), // 5
+                          NavigationRailDestination(icon: Icon(Icons.ads_click), label: Text('ITANGAZO')), // 6
+                          NavigationRailDestination(icon: Icon(Icons.feedback_outlined), label: Text('FEEDBACK')), // 7
+                          NavigationRailDestination(icon: Icon(Icons.report_gmailerrorred), label: Text('REPORTS')), // 8
+                          NavigationRailDestination(icon: Icon(Icons.send_outlined), label: Text('KURI BOSE')), // 9
+                          NavigationRailDestination(icon: Icon(Icons.sports_esports_outlined), label: Text('DAME')), // 10
+                          NavigationRailDestination(icon: Icon(Icons.star_rounded), label: Text('STARS')), // 11
+                          // BUTO YA MASTER CONTROL
+                          NavigationRailDestination(
+                            icon: Icon(Icons.settings_suggest_rounded, color: Colors.cyanAccent), 
+                            label: Text('CONTROL', style: TextStyle(color: Colors.cyanAccent))
+                          ), // 12
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
-          const VerticalDivider(thickness: 1, width: 1),
-          
+
+          // MAIN CONTENT AREA
           Expanded(
             child: IndexedStack(
               index: _selectedIndex,

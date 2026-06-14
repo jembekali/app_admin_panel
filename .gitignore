@@ -1,4 +1,7 @@
-# Miscellaneous
+# 1. SENSITIVE FILES (AMABANGA) - Iyi niyo ituma app_config itajya kuri GitHub
+lib/app_config.dart
+
+# 2. MISCELLANEOUS
 *.class
 *.log
 *.pyc
@@ -9,32 +12,40 @@
 .history
 .svn/
 
-# Kompilat- und Build-Verzeichnisse
+# 3. BUILD AND TOOLING
 /build/
 .dart_tool/
 .idea/
+.vscode/
 
-# Flutter-spezifische Dateien
+# 4. FLUTTER SPECIFIC
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
 .pub-cache/
 .pub/
-/ios/Pods/
-/ios/Flutter/App.framework
-/ios/Flutter/engine.framework
-/ios/Flutter/flutter_assets/
-/ios/Runner/GeneratedPluginRegistrant.*
-/android/key.properties
-/android/local.properties
+
+# 5. ANDROID SPECIFIC
 /android/.gradle/
+/android/local.properties
+/android/key.properties
 /android/app/src/main/gen/
 /android/app/build/
 /android/gradle/
 /android/gradlew
 /android/gradlew.bat
+*.keystore
+*.jks
 
-# IDE-spezifische Dateien
+# 6. IOS SPECIFIC
+/ios/Pods/
+/ios/Flutter/App.framework
+/ios/Flutter/engine.framework
+/ios/Flutter/flutter_assets/
+/ios/Runner/GeneratedPluginRegistrant.*
+*.xcworkspace
+
+# 7. IDE SPECIFIC
 *.iml
 *.ipr
 *.iws

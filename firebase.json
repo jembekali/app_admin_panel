@@ -1,1 +1,17 @@
-{"flutter":{"platforms":{"dart":{"lib/firebase_options.dart":{"projectId":"jembe-talk","configurations":{"web":"1:296013157420:web:79512477f4440aff5aed89"}}}}}}
+{
+  "hosting": {
+    "site": "jembe-talk-admin-1",
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

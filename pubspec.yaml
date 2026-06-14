@@ -10,34 +10,40 @@ dependencies:
   flutter:
     sdk: flutter
 
-  firebase_core: ^2.32.0 
-  firebase_auth: ^4.20.0
-  cloud_firestore: ^4.17.5
+  # =========================================================
+  # =====> FIREBASE VERSIONS ZIKOSOYE (COMPATIBLE V3+) <=====
+  # =========================================================
+  firebase_core: ^3.6.0        # <== Updated for better Web support
+  firebase_auth: ^5.3.1        # <== Updated
+  cloud_firestore: ^5.4.4      # <== Updated for stability
+  firebase_database: ^11.1.0   
+  cloud_functions: ^5.1.0      
   
-  # ===> NAKOSOYE URUGERO RWA INTL <===
   intl: ^0.19.0
-
   fl_chart: ^0.68.0
   youtube_player_flutter: ^8.1.2 
-  http: ^1.1.0
+  http: ^1.2.2                 # <== Updated (Ingenzi cyane kuri Full Photo Bytes)
 
-  url_launcher: ^6.1.14
+  url_launcher: ^6.3.0         
+  cached_network_image: ^3.4.1 
 
-  # =============================================================
-  # >>>>> IYI NI YO PACKAGE NSHYA TWONGEREYEMWO <<<<<
-  # =============================================================
-  cached_network_image: ^3.3.1
-
+  # ZIFAYILI NA CLOUDFLARE R2
+  file_picker: ^8.1.2          
+  video_player: ^2.9.1
+  mime: ^1.0.5
+  provider: ^6.1.2
 
   cupertino_icons: ^1.0.8
-  uuid: ^4.5.2
-  firebase_database: ^10.5.7
+  uuid: ^4.5.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
   flutter_lints: ^4.0.0
 
 flutter:
   uses-material-design: true
+  
+  # Niba ufite assets (amashusho), ntugahabwe kwibagirwa kuzishyira hano
+  # assets:
+  #   - assets/images/

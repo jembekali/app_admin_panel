@@ -21,25 +21,13 @@ class DefaultFirebaseOptions {
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for android - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return android;
       case TargetPlatform.iOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for ios - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return ios;
       case TargetPlatform.macOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for macos - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return macos;
       case TargetPlatform.windows:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for windows - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return windows;
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -53,12 +41,58 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyDKJMaUH2wyE6-ywT1DAOD39vFy4wD8TlE',
-    appId: '1:296013157420:web:79512477f4440aff5aed89',
-    messagingSenderId: '296013157420',
-    projectId: 'jembe-talk',
-    authDomain: 'jembe-talk.firebaseapp.com',
-    storageBucket: 'jembe-talk.firebasestorage.app',
-    measurementId: 'G-5MLMZP43MH',
+    apiKey: 'AIzaSyAT-L2IhMZsq264VR1ZDAiPi-S0eSGugc4',
+    appId: '1:93565364847:web:5f4eed3ca2017fc2d43b9a',
+    messagingSenderId: '93565364847',
+    projectId: 'jembe-talk-1',
+    authDomain: 'jembe-talk-1.firebaseapp.com',
+    databaseURL: 'https://jembe-talk-1-default-rtdb.firebaseio.com',
+    storageBucket: 'jembe-talk-1.firebasestorage.app',
+    measurementId: 'G-D6N9MMVEZT',
   );
+
+  static const FirebaseOptions android = FirebaseOptions(
+    apiKey: 'AIzaSyDlYA92-pX-P5Q1b6ZtJHx56uui9qCvtKM',
+    appId: '1:93565364847:android:23faf8dab0d9d4efd43b9a',
+    messagingSenderId: '93565364847',
+    projectId: 'jembe-talk-1',
+    databaseURL: 'https://jembe-talk-1-default-rtdb.firebaseio.com',
+    storageBucket: 'jembe-talk-1.firebasestorage.app',
+  );
+
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyDlPlxw20mp-JvwEar1gtA2cFeE86lmFiM',
+    appId: '1:93565364847:ios:43406134af445b17d43b9a',
+    messagingSenderId: '93565364847',
+    projectId: 'jembe-talk-1',
+    databaseURL: 'https://jembe-talk-1-default-rtdb.firebaseio.com',
+    storageBucket: 'jembe-talk-1.firebasestorage.app',
+    androidClientId: '93565364847-a34liq8nveprmpcakqp8co769n59r7qu.apps.googleusercontent.com',
+    iosClientId: '93565364847-qjibikpp3kmnde1tgqrpndo9jeat6895.apps.googleusercontent.com',
+    iosBundleId: 'com.example.appAdminPanel',
+  );
+
+  static const FirebaseOptions macos = FirebaseOptions(
+    apiKey: 'AIzaSyDlPlxw20mp-JvwEar1gtA2cFeE86lmFiM',
+    appId: '1:93565364847:ios:43406134af445b17d43b9a',
+    messagingSenderId: '93565364847',
+    projectId: 'jembe-talk-1',
+    databaseURL: 'https://jembe-talk-1-default-rtdb.firebaseio.com',
+    storageBucket: 'jembe-talk-1.firebasestorage.app',
+    androidClientId: '93565364847-a34liq8nveprmpcakqp8co769n59r7qu.apps.googleusercontent.com',
+    iosClientId: '93565364847-qjibikpp3kmnde1tgqrpndo9jeat6895.apps.googleusercontent.com',
+    iosBundleId: 'com.example.appAdminPanel',
+  );
+
+  static const FirebaseOptions windows = FirebaseOptions(
+    apiKey: 'AIzaSyAT-L2IhMZsq264VR1ZDAiPi-S0eSGugc4',
+    appId: '1:93565364847:web:d516e3b94eb6e8d9d43b9a',
+    messagingSenderId: '93565364847',
+    projectId: 'jembe-talk-1',
+    authDomain: 'jembe-talk-1.firebaseapp.com',
+    databaseURL: 'https://jembe-talk-1-default-rtdb.firebaseio.com',
+    storageBucket: 'jembe-talk-1.firebasestorage.app',
+    measurementId: 'G-FF1S9VMJGG',
+  );
+
 }

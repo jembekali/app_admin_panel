@@ -8,20 +8,25 @@ class AnalyticsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection('users').snapshots(),
+    // 1. KUBARA ITARIKI Y'IMINSI 7 ISHIZE
+    final sevenDaysAgo = DateTime.now().subtract(const Duration(days: 7));
+    final timestampThreshold = Timestamp.fromDate(sevenDaysAgo);
+
+    return FutureBuilder<QuerySnapshot>(
+      // 🔥 OPTIMIZATION: Soma gusa abinjiye mu minsi 7 ishize (Reads nkeya)
+      future: FirebaseFirestore.instance
+          .collection('users')
+          .where('createdAt', isGreaterThanOrEqualTo: timestampThreshold)
+          .get(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(child: CircularProgressIndicator(color: Colors.amber));
         }
         if (snapshot.hasError) {
-          return const Center(child: Text('Habaye ikibazo mu gukwega amakuru'));
-        }
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Center(child: Text('Nta makuru y\'abakoresha araboneka'));
+          return const Center(child: Text('Habaye ikibazo mu gukwega amakuru', style: TextStyle(color: Colors.white)));
         }
 
-        final users = snapshot.data!.docs;
+        final users = snapshot.data?.docs ?? [];
         final now = DateTime.now();
         
         final dailyCounts = <DateTime, int>{};
@@ -45,28 +50,37 @@ class AnalyticsScreen extends StatelessWidget {
         int maxValue = dailyCounts.values.fold(0, (prev, element) => element > prev ? element : prev);
 
         return Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(25.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Abakoresha Bashasha mu Misi 7 Iheruka', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 20),
+              const Text(
+                'Abakoresha Bashasha (Iminsi 7)', 
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Muri iyindwi hinjiye abantu ${users.length}.',
+                style: const TextStyle(color: Colors.white38, fontSize: 14),
+              ),
+              const SizedBox(height: 40),
               Expanded(
                 child: BarChart(
                   BarChartData(
                     alignment: BarChartAlignment.spaceAround,
-                    maxY: maxValue == 0 ? 5 : (maxValue * 1.5),
+                    maxY: maxValue == 0 ? 5 : (maxValue * 1.2),
                     barTouchData: BarTouchData(
                       touchTooltipData: BarTouchTooltipData(
+                        getTooltipColor: (group) => Colors.indigo,
                         getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                          String weekDay = DateFormat.EEEE('fr_FR').format(sortedDays[group.x.toInt()]);
+                          String weekDay = DateFormat.EEEE().format(sortedDays[group.x.toInt()]);
                           return BarTooltipItem(
                             '$weekDay\n',
-                            const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                            const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                             children: <TextSpan>[
                               TextSpan(
                                 text: (rod.toY.toInt()).toString(),
-                                style: const TextStyle(color: Colors.yellow, fontSize: 14, fontWeight: FontWeight.w500),
+                                style: const TextStyle(color: Colors.amber, fontSize: 16),
                               ),
                             ],
                           );
@@ -79,28 +93,28 @@ class AnalyticsScreen extends StatelessWidget {
                         sideTitles: SideTitles(
                           showTitles: true,
                           getTitlesWidget: (value, meta) {
+                            if (value.toInt() >= sortedDays.length) return const Text('');
                             final day = sortedDays[value.toInt()];
-                            return SideTitleWidget(axisSide: meta.axisSide, space: 4.0, child: Text(DateFormat.E('fr_FR').format(day)));
+                            return SideTitleWidget(
+                              axisSide: meta.axisSide, 
+                              space: 8.0, 
+                              child: Text(DateFormat.E().format(day), style: const TextStyle(color: Colors.grey, fontSize: 10))
+                            );
                           },
-                          reservedSize: 32,
                         ),
                       ),
                       leftTitles: AxisTitles(
                         sideTitles: SideTitles(
                           showTitles: true, 
-                          reservedSize: 28,
-                          interval: 1,
+                          reservedSize: 30,
                           getTitlesWidget: (value, meta) {
-                             if (value % 1 == 0) {
-                               return Text(value.toInt().toString(), style: const TextStyle(fontSize: 10));
-                             }
-                             return const Text('');
+                             return Text(value.toInt().toString(), style: const TextStyle(fontSize: 10, color: Colors.grey));
                           },
                         )
                       ),
                       topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                       rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-    ),
+                    ),
                     gridData: const FlGridData(show: false),
                     borderData: FlBorderData(show: false),
                     barGroups: sortedDays.asMap().entries.map((entry) {
@@ -109,7 +123,20 @@ class AnalyticsScreen extends StatelessWidget {
                       final count = dailyCounts[day]!;
                       return BarChartGroupData(
                         x: index,
-                        barRods: [BarChartRodData(toY: count.toDouble(), color: Colors.indigo, width: 22, borderRadius: BorderRadius.circular(4))],
+                        barRods: [
+                          BarChartRodData(
+                            toY: count.toDouble(), 
+                            color: Colors.amber, 
+                            width: 25, 
+                            borderRadius: BorderRadius.circular(6),
+                            // 🔥 KOSORA HANO: Izina ry'ukuri ni BackgroundBarChartRodData
+                            backDrawRodData: BackgroundBarChartRodData(
+                              show: true, 
+                              toY: maxValue.toDouble() == 0 ? 5 : maxValue.toDouble(), 
+                              color: Colors.white.withAlpha(15) // Nashyizemo withAlpha aho gukoresha opacity
+                            )
+                          )
+                        ],
                       );
                     }).toList(),
                   ),
